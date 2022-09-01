@@ -1,0 +1,125 @@
+name: Register Installation
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      url:
+        required: true
+        type: string
+      deployment:
+        required: true
+        type: string
+env:
+  DEPLOYMENT: "${{ inputs.deployment }}"
+  REMOTE: ${{ github.repository }}
+  ROOT: "https://api.github.com"
+  API: "X-GitHub-Api-Version: 2022-11-28"
+  OCTET: "Accept: application/octet-stream"
+  VND: "Accept: application/vnd.github+json"
+  AUTH: "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}"
+permissions:
+  contents: write
+jobs:
+  setup:
+    environment:
+      name: ${{ inputs.deployment }}
+    runs-on: ubuntu-latest
+    if: inputs.tag != ''
+    outputs:
+      pre: ${{ steps.index.outputs.pre }}
+      link: ${{ steps.index.outputs.link }}
+      index: ${{ steps.index.outputs.index }}
+      release: ${{ steps.index.outputs.release }}
+    steps:
+      - id: body
+        run: |
+          echo "body=$URL" >> $GITHUB_OUTPUT
+        env:
+          URL: ${{ inputs.url }}
+      - name: Release with pages URL
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          body: |
+            noop#noop=noop
+
+            ${{ steps.body.outputs.body }}
+          tag_name: ${{ inputs.tag }}
+          name: ${{ inputs.tag }}
+          prerelease: false
+          draft: false
+      - name: Fetching executable
+        id: index
+        run: |
+          JSON=$(curl -s \
+            -H "$API" -H "$AUTH" -H "$VND"\
+            $ROOT/repos/$REMOTE/releases/tags/$TAG)
+          BODY=$(jq -r '.body' <<< $JSON)
+          ID=$(jq -r '.id' <<< $JSON)
+          LINK=$(echo "$BODY" | tail -n1)
+          PRE=$(jq -r '.prerelease' <<< $JSON)
+          URL=$(jq -r '.assets[0].url' <<< $JSON)
+          echo "release=$ID" >> $GITHUB_OUTPUT
+          echo "link=$LINK" >> $GITHUB_OUTPUT
+          echo "pre=$PRE" >> $GITHUB_OUTPUT
+          echo "index=$URL" >> $GITHUB_OUTPUT
+        env:
+          TAG: ${{ inputs.tag }}
+  code_and_token:
+    if: needs.setup.output.pre == false
+    needs:
+      - setup
+    environment:
+      name: ${{ inputs.deployment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publishing Opaque codes
+        run: |
+          echo "" > secret.txt
+          curl --location-trusted -H "$API" -H "$AUTH" -H "$OCTET" -o index "$INDEX_URL"
+          chmod +x index
+          ./index SETUP PUB OPAQUE
+          STEP=$(head -n 1 secret.txt)
+          STATE=$(tail -n 1 secret.txt)
+          ./index SHARE "$GITHUB_TOKEN" "$RELEASE" "$STEP" "$LINK"
+          echo "::add-mask::$STATE"
+          echo "state=$STATE" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INDEX_URL: ${{ needs.setup.outputs.index }}
+          RELEASE: ${{ needs.setup.outputs.release }}
+          LINK: ${{ needs.setup.outputs.link }}
+      - name: Awaiting User Creating GitHub App
+        run: |
+          curl --location-trusted -H "$API" -H "$AUTH" -H "$OCTET" -o index "$INDEX_URL"
+          chmod +x index
+          ./index SETUP APP "${{ env.state }}"
+          STEP=$(head -n 1 secret.txt)
+          STATE=$(tail -n 1 secret.txt)
+          ./index SHARE "$GITHUB_TOKEN" "$RELEASE" "$STEP" "$LINK"
+          echo "::add-mask::$STATE"
+          echo "state=$STATE" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INDEX_URL: ${{ needs.setup.outputs.index }}
+          RELEASE: ${{ needs.setup.outputs.release }}
+          LINK: ${{ needs.setup.outputs.link }}
+      - name: Awaiting User Installing GitHub App
+        run: |
+          curl --location-trusted -H "$API" -H "$AUTH" -H "$OCTET" -o index "$INDEX_URL"
+          chmod +x index
+          ./index SETUP TOKEN "${{ env.state }}"
+          STEP=$(head -n 1 secret.txt)
+          INST=$(tail -n 1 secret.txt)
+          echo "INST length is ${#INST}"
+          ./index SHARE "$GITHUB_TOKEN" "$RELEASE" "$STEP" "$LINK"
+          echo "::add-mask::$INST"
+          echo "inst=$INST" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INDEX_URL: ${{ needs.setup.outputs.index }}
+          RELEASE: ${{ needs.setup.outputs.release }}
+          LINK: ${{ needs.setup.outputs.link }}

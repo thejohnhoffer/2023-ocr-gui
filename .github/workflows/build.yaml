@@ -1,0 +1,76 @@
+name: Build And Release
+concurrency:
+  group: build-and-release
+  cancel-in-progress: true
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Tag of GitHub release to build"
+        required: true
+        type: string
+      prerelease:
+        description: "True if set as pre-release"
+        required: true
+        type: boolean
+      deployment:
+        required: true
+        type: string
+    outputs:
+      url:
+        description: "URL of GitHub Pages to link to"
+        value: ${{ jobs.pages.outputs.url }}
+jobs:
+  pages:
+    uses: ./.github/workflows/pages.yaml
+    permissions:
+      pages: write
+      contents: read
+      id-token: write
+    with:
+      remote: ${{ github.repository }}
+      version: ${{ inputs.tag }}
+      deployment: ${{ inputs.deployment }}
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Use Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Add PNPM to Path
+        run: echo $PNPM_HOME >> $GITHUB_PATH
+        env:
+          PNPM_HOME: "/home/runner/.local/share/pnpm"
+      - uses: pnpm/action-setup@v2.0.1
+        name: Install pnpm
+        id: pnpm-install
+        with:
+          version: 7
+          run_install: |
+            - args: [--global, node-gyp]
+              cwd: "."
+            - cwd: "."
+        env:
+          CXX: gcc
+          PNPM_HOME: "/home/runner/.local/share/pnpm"
+      - name: Run with pnpm
+        run: |
+          pnpm build
+      - name: Release compiled executable
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          prerelease: ${{ inputs.prerelease }}
+          tag_name: ${{ inputs.tag }}
+          name: ${{ inputs.tag }}
+          draft: false
+          files: index

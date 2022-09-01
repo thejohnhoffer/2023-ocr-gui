@@ -1,0 +1,68 @@
+{
+  "name": "2023-ocr-gui",
+  "version": "6.19.1",
+  "description": "Access TV Quiz PhD",
+  "type": "module",
+  "scripts": {
+    "tsc": "tsc",
+    "dev": "node dev.js",
+    "timer": "bash timer.bash",
+    "action": "./action/index",
+    "build": "tsc && pnpm p",
+    "lint": "eslint src client",
+    "lint:src": "eslint src",
+    "lint:client": "eslint client",
+    "build:host": "tsc && pnpm p:host",
+    "develop": "ts-node-esm src/index.ts",
+    "serve": "npx http-server client -p 8000",
+    "test": "DEBUG=pw:api playwright test",
+    "test:config": "bash test_env.bash",
+    "test:debug": "playwright test --debug",
+    "test:codegen": "npx playwright codegen localhost:8000",
+    "test:ideas": "(trap 'kill 0' SIGINT; pnpm dev clean & pnpm test:codegen)",
+    "p:host": "pkg -t host --no-bytecode --public-packages \"*\" --public --out-dir . dist/index.js",
+    "p": "pkg -t node18-linux-x64 --no-bytecode --public-packages \"*\" --public --out-dir . dist/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thejohnhoffer/2023-ocr-gui.git"
+  },
+  "author": "John Hoffer",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/thejohnhoffer/2023-ocr-gui/issues"
+  },
+  "homepage": "https://github.com/thejohnhoffer/2023-ocr-gui#readme",
+  "dependencies": {
+    "@octokit/app": "^13.0.11",
+    "@octokit/request": "^6.2.2",
+    "argon2": "^0.29.1",
+    "eccrypto": "^1.1.6",
+    "jws": "^4.0.0",
+    "libsodium-wrappers": "0.7.8",
+    "octokit": "^2.0.7",
+    "opaque-low-io": "^4.0.0",
+    "sock-secret": "6.4.2",
+    "ts-node": "^10.9.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "node-abi": "3.25.0",
+      "libsodium-wrappers-sumo": "0.7.8"
+    }
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.30.0",
+    "@types/eccrypto": "^1.1.3",
+    "@types/jws": "^3.2.4",
+    "@types/libsodium-wrappers": "^0.7.9",
+    "@types/node": "^18.7.19",
+    "@typescript-eslint/eslint-plugin": "^5.38.0",
+    "@typescript-eslint/parser": "^5.38.0",
+    "dotenv": "^16.0.2",
+    "eslint": "^8.24.0",
+    "pkg": "^5.8.0",
+    "typescript": "^4.8.3",
+    "ua-parser-js": "^1.0.33"
+  }
+}

@@ -1,0 +1,60 @@
+name: Open Login
+on:
+  repository_dispatch:
+    types: [call-login-open]
+env:
+  REMOTE: ${{ github.repository }}
+  ROOT: "https://api.github.com"
+  API: "X-GitHub-Api-Version: 2022-11-28"
+  OCTET: "Accept: application/octet-stream"
+  VND: "Accept: application/vnd.github+json"
+  AUTH: "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}"
+concurrency:
+  group: PRODUCTION-LOGIN
+  cancel-in-progress: true
+permissions:
+  contents: write
+  pages: read
+jobs:
+  read_env:
+    uses: ./.github/workflows/read_env.yaml
+    permissions:
+      pages: read
+  login_open:
+    needs: [read_env]
+    environment:
+      name: ${{ needs.read_env.outputs.deployment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure Latest Release URL
+        id: index
+        run: |
+          JSON=$(curl -s \
+            -H "$API" -H "$AUTH" -H "$VND"\
+            $ROOT/repos/$REMOTE/releases/latest)
+          BODY=$(jq -r '.body' <<< $JSON)
+          ID=$(jq -r '.id' <<< $JSON)
+          PUB=$(echo "$BODY" | head -n1)
+          URL=$(jq -r '.assets[0].url' <<< $JSON)
+          echo "pub=$PUB" >> $GITHUB_OUTPUT
+          echo "release=$ID" >> $GITHUB_OUTPUT
+          echo "index=$URL" >> $GITHUB_OUTPUT
+      - name: Login Open
+        run: |
+          curl --location-trusted -H "$API" -H "$AUTH" -H "$OCTET" -o index "$INDEX_URL"
+          chmod +x index
+          echo "" > secret.txt
+          ./index LOGIN OPEN "$PUB" "$OP"
+          STEP=$(head -n 1 secret.txt)
+          MESSAGE="Use your private login link."
+          ./index SHARE "$GITHUB_TOKEN" "$RELEASE" "$STEP" "$MESSAGE"
+        env:
+          DEPLOYMENT: ${{ needs.read_env.outputs.deployment }}
+          ROOT__INSTALLATION : ${{ secrets.ROOT__INSTALLATION }}
+          ROOT__SESSION : ${{ secrets.ROOT__SESSION }}
+          ROOT__PEPPER : ${{ secrets.ROOT__PEPPER }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUB: ${{ steps.index.outputs.pub }}
+          INDEX_URL: ${{ steps.index.outputs.index }}
+          RELEASE: ${{ steps.index.outputs.release }}
+          OP: ${{ github.event.client_payload.op }}

@@ -1,0 +1,42 @@
+name: Deploy GitHub Pages 
+on:
+  workflow_call:
+    inputs:
+      remote:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      deployment:
+        required: true
+        type: string
+    outputs:
+      url:
+        description: "GitHub Pages URL"
+        value: ${{ jobs.pages.outputs.url }}
+jobs:
+  pages:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/configure-pages@v2
+      - run: |
+          echo "" > $CSV
+          echo "REMOTE,$REMOTE" >> $CSV
+          echo "VERSION,$VERSION" >> $CSV
+          echo "DEPLOYMENT,$DEPLOYMENT" >> $CSV
+        env:
+          CSV: "client/environment.csv"
+          REMOTE: ${{ inputs.remote }}
+          VERSION: ${{ inputs.version }}
+          DEPLOYMENT: ${{ inputs.deployment }}
+      - uses: actions/upload-pages-artifact@v1
+        with: { path : 'client' }
+      - id: deployment
+        uses: actions/deploy-pages@v1
