@@ -1,19 +1,15 @@
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
 
-const PORT = '8000'; // match dev.js
-const LOCAL = `http://localhost:${PORT}/`;
+const URL = `http://localhost:${PORT}/`;
 
+const repo = 'read-and-chat-gui';
 const user = process.env.GITHUB_USER ?? '';
+const URL = `https://github.com/${user}/${repo}/releases`;
+const PAGES = `https://${user}.github.io/${repo}`;
+const TAG = 'v7.1.2';
 
-const deleteGitHubApp = async ({ page, app_name }) => {
-  await page.getByRole('link', { name: 'App settings' }).click();
-  await page.getByRole('link', { name: 'Advanced' }).click();
-  await page.getByRole('button', { name: 'Delete GitHub App' }).click();
-  const app_in = 'Please type in the name of the GitHub App to confirm.';
-  const rm_in = { name: /delete this GitHub App/i };
-  await page.getByLabel(app_in).fill(app_name);
-  await page.getByRole('button', rm_in).click();
+const cleanup = async () => {
   fs.unlinkSync('.env');
 }
 
@@ -28,27 +24,55 @@ const loadInstallPage = async ({ page }) => {
 
 test('Create GitHub App Link', async ({ page }) => {
   const quiz_pass = 'root';
-  await page.goto(LOCAL);
+  await page.goto(`${URL}/releases`);
+  await page.getByRole('link', {
+    name: 'Draft a new release'
+  }).click();
+  await page.getByRole('button', {
+    name: 'Choose a tag'
+  }).click();
+  await page.getByPlaceholder('Find or create a new tag').fill(TAG);
+  await page.getByRole('menuitemradio', {
+    name: `Create new tag: ${TAG} on publish`
+  }).click();
+  await page.getByLabel('Set as a pre-release').check();
+  await page.getByRole('button', {
+    name: 'Publish release'
+  }).click();
+  console.log('Waiting 20 seconds...')
+  await new Promise(r => setTimeout(r, 20000));
+  await page.goto(`${URL}/releases/tag/${TAG}`);
+  await page.getByRole('link', { name: PAGES }).click();
 
   await page.getByRole('button', { name: 'Create' }).click();
-  const app_input = await page.getByLabel('GitHub App name');
-  const app_name = await app_input.inputValue();
-
   await page.getByRole('button', { name: /create github app/i }).click();
-  const install_page_popup = page.waitForEvent('popup');
   await page.getByRole('link', { name: 'GitHub App' }).click();
-  const inst_page = await install_page_popup;
-  await loadInstallPage({ page: inst_page });
+  await page.getByRole('button', { name: 'Copy' }).click();
+  const instPage = await page.waitForEvent('popup');
+  await loadInstallPage({ page: instPage });
 
-  await inst_page.getByRole('link', { name: /your account/i }).click();
-  await inst_page.getByRole('button', { name: 'Install' }).click();
-  await page.getByLabel('Password:').fill(quiz_pass);
+  await instPage.getByPlaceholder('Describe this release').click();
+  await instPage.getByPlaceholder('Describe this release').fill('');
+  await instPage.getByPlaceholder('Describe this release').press('Meta+a');
+  await instPage.getByRole('button', {
+    name: 'Update release'
+  }).click();
+  await finalPage = await page.waitForEvent('popup');
+  await finalPage.getByRole('link', {
+    name: '/install .* on your account/i'
+  }).click();
+  await finalPage.getByLabel('Only select repositories').check();
+  await finalPage.getByRole('button', {
+    name: 'Select repositories'
+  }).click();
+  await finalPage.getByPlaceholder('Search for a repository').fill(repo);
+  await finalPage.getByRole('menuitem', { name: `/${user}.${repo}/i` }).click();
+  await finalPage.getByRole('button', { name: 'Install' }).click();
+  await page.getByLabel('Password:').fill('123');
   await page.getByRole('button', { name: 'Sign up' }).click();
-  const login_page_popup = page.waitForEvent('popup');
-  await page.getByRole('link', { name: /login/i }).click();
-  const login_page = await login_page_popup;
-  await expect(login_page).toHaveURL(/.*login/);
+  const bestPage = await page.waitForEvent('popup');
+  await page.getByRole('link', { name: '/login/i' }).click();
 
-  // Delete newly created app
-  await deleteGitHubApp({ page: inst_page, app_name });
+  // Cleanup
+  await cleanup();
 });
