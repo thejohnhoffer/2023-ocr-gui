@@ -1,13 +1,11 @@
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
 
-const URL = `http://localhost:${PORT}/`;
-
 const repo = 'read-and-chat-gui';
 const user = process.env.GITHUB_USER ?? '';
-const URL = `https://github.com/${user}/${repo}/releases`;
+const URL = `https://github.com/${user}/${repo}`;
 const PAGES = `https://${user}.github.io/${repo}`;
-const TAG = 'v7.1.2';
+const TAG = 'v7.1.3';
 
 const cleanup = async () => {
   fs.unlinkSync('.env');
@@ -39,9 +37,9 @@ test('Create GitHub App Link', async ({ page }) => {
   await page.getByRole('button', {
     name: 'Publish release'
   }).click();
-  console.log('Waiting 20 seconds...')
-  await new Promise(r => setTimeout(r, 20000));
-  await page.goto(`${URL}/releases/tag/${TAG}`);
+  console.log('Waiting 120 seconds...')
+  await new Promise(r => setTimeout(r, 120 * 1000));
+  await page.reload();
   await page.getByRole('link', { name: PAGES }).click();
 
   await page.getByRole('button', { name: 'Create' }).click();
@@ -57,7 +55,7 @@ test('Create GitHub App Link', async ({ page }) => {
   await instPage.getByRole('button', {
     name: 'Update release'
   }).click();
-  await finalPage = await page.waitForEvent('popup');
+  const finalPage = await page.waitForEvent('popup');
   await finalPage.getByRole('link', {
     name: '/install .* on your account/i'
   }).click();

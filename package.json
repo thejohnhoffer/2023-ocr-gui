@@ -19,7 +19,7 @@
     "test:debug": "playwright test --debug",
     "test:codegen": "npx playwright codegen localhost:8000",
     "test": "DEBUG=pw:api playwright test launch_local_test.spec.ts",
-    "launch": "DEBUG=pw:api playwright test launch_production.spec.ts",
+    "launch": "DEBUG=pw:api playwright test --debug launch_production.spec.ts",
     "test:ideas": "(trap 'kill 0' SIGINT; pnpm dev clean & pnpm test:codegen)",
     "p:host": "pkg -t host --no-bytecode --public-packages \"*\" --public --out-dir . dist/index.js",
     "p": "pkg -t node18-linux-x64 --no-bytecode --public-packages \"*\" --public --out-dir . dist/index.js"
